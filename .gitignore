@@ -1,0 +1,4 @@
+*.un~
+build/
+dist/
+bitbucket_sync.egg-info/
