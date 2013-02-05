@@ -25,7 +25,9 @@ from docopt import docopt
 import requests
 from requests_oauthlib import OAuth1
 
-def sync_repo(repo):
+def sync_repo(args):
+    directory, repo = args
+    os.chdir(directory)
     repo_url = "git@bitbucket.org:%s/%s.git" % (repo["owner"], repo["slug"])
     try:
         subprocess.call(["git", "clone", "--mirror", repo_url])
@@ -65,11 +67,11 @@ def main():
         print "%s is not a directory" % directory
         sys.exit(1)
 
-    os.chdir(directory)
     pool = Pool(processes=processes, initializer=init_worker)
+    directory = os.path.abspath(directory)
 
     try:
-        result = pool.map(sync_repo, only_git)
+        result = pool.map(sync_repo, [(directory, repo) for repo in only_git])
     except KeyboardInterrupt:
         pool.close()
         pool.terminate()
