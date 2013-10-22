@@ -65,6 +65,59 @@ def worker(repositories, lock):
         sync_repo(directory, repo, lock)
 
 
+def ensure_base_directory(directory):
+    directory = os.path.abspath(directory)
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    if not os.path.isdir(directory):
+        print("%s is not a directory" % directory)
+        sys.exit(1)
+
+    return directory
+
+
+def retrieve_repositories_list(key, secret):
+    oauth = OAuth1(client_key=unicode(key), client_secret=unicode(secret))
+    API_ROOT = 'https://api.bitbucket.org'
+    deploy_keys_resource = "%s/1.0/user/repositories/" % API_ROOT
+    response = requests.get(deploy_keys_resource, auth=oauth)
+    if response.status_code != 200:
+        print("Error while listing the repositories")
+        sys.exit(1)
+
+    repo_list = response.json()
+    return [repo for repo in repo_list if repo["scm"] == "git"]
+
+
+def configure_queue(api_repositories, directory):
+    directory = ensure_base_directory(directory)
+
+    repositories_queue = Queue()
+    for repo in api_repositories:
+        repositories_queue.put((directory, repo))
+    return repositories_queue
+
+
+def consume_queue(repositories_queue, processes):
+    lock = thread.allocate_lock()
+    worker_threads = []
+    for i in range(processes):
+        worker_thread = Thread(target=worker, args=(repositories_queue, lock))
+        worker_thread.start()
+        worker_threads.append(worker_thread)
+
+    try:
+        while any(w.isAlive() for w in worker_threads):
+            time.sleep(.5)
+    except KeyboardInterrupt:
+        # purge rest of queue
+        # Note that the git processes inside the workder threads should get
+        # killed
+        while not repositories_queue.empty():
+            repositories_queue.get()
+
 def main():
     arguments = docopt(__doc__, argv=sys.argv[1:], help=True, version="0.3.0")
 
@@ -76,43 +129,6 @@ def main():
     except ValueError:
         processes = cpu_count()
 
-    oauth = OAuth1(client_key=unicode(key), client_secret=unicode(secret))
-    API_ROOT = 'https://api.bitbucket.org'
-    deploy_keys_resource = "%s/1.0/user/repositories/" % API_ROOT
-    response = requests.get(deploy_keys_resource, auth=oauth)
-    if response.status_code != 200:
-        print("Error while listing the repositories")
-        sys.exit(1)
-
-    repo_list = response.json()
-    only_git = [repo for repo in repo_list if repo["scm"] == "git"]
-
-    directory = os.path.abspath(directory)
-
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    if not os.path.isdir(directory):
-        print("%s is not a directory" % directory)
-        sys.exit(1)
-
-    repositories = Queue()
-    for repo in only_git:
-        repositories.put((directory, repo))
-
-    lock = thread.allocate_lock()
-    worker_threads = []
-    for i in range(processes):
-        worker_thread = Thread(target=worker, args=(repositories, lock))
-        worker_thread.start()
-        worker_threads.append(worker_thread)
-
-    try:
-        while any(w.isAlive() for w in worker_threads):
-            time.sleep(.5)
-    except KeyboardInterrupt:
-        # purge rest of queue
-        # Note that the git processes inside the workder threads should get
-        # killed
-        while not repositories.empty():
-            repositories.get()
+    api_repositories = retrieve_repositories_list(key, secret)
+    repositories_queue = configure_queue(api_repositories, directory)
+    consume_queue(repositories_queue, processes)
