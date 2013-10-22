@@ -57,7 +57,7 @@ def main():
         print "Error while listing the repositories"
         sys.exit(1)
 
-    repo_list = response.json
+    repo_list = response.json()
     only_git = [repo for repo in repo_list if repo["scm"] == "git"]
 
     if not os.path.exists(directory):

@@ -15,6 +15,7 @@ setup(
         ]
     },
     install_requires=['docopt==0.5.0',
-                      'requests==0.14.2',
-                      'requests-oauthlib==0.2.0'],
+                      'requests==2.0.0',
+                      'requests-oauthlib==0.4.0',
+                      'oauthlib==0.6.0'],
 )
