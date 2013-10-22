@@ -102,12 +102,10 @@ As usually, there will be one subdirectory per owner, and then all related repos
 Questions and Answers
 =====================
 
-Does the tool synchronizes also Mercurial repositories?
--------------------------------------------------------
+Does the tool synchronizes Mercurial repositories?
+--------------------------------------------------
 
-Currently only git repositories are taken into account, mercurial ones are silently ignored.
-
-The situation may change in the future.
+Yes, as long as mercurial is installed locally.
 
 Does it clone all publicly accessible repositories from bitbucket?
 ------------------------------------------------------------------
