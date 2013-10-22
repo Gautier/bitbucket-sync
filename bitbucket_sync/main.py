@@ -13,15 +13,15 @@ Options:
   --processes=<processes>    Number of repositories to mirror at the same time (defaults to CPU count)
 """
 
-import sys
-import os
-import subprocess
 from multiprocessing import Pool
+import os
 import signal
+import subprocess
+import sys
 
 from docopt import docopt
-import requests
 from requests_oauthlib import OAuth1
+import requests
 
 def sync_repo(args):
     directory, repo = args
