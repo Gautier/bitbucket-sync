@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='bitbucket-sync',
-    version='0.2.0',
+    version='0.3.0',
     description='bitbucket-sync synchronize locally all the repositories of a bitbucket account',
     author='Gautier Hayoun',
     author_email='ghayoun@gmail.com',
