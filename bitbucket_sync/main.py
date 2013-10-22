@@ -1,13 +1,14 @@
-"""bitbucket-sync synchronize all the repositories of a bitbucket account to a
+"""bitbucket-sync synchronize repositories of a bitbucket account to a local
 directory. The OAuth key and secret must already be activated in bitbucket.
 
 Usage:
-  bitbucket-sync [--processes=processes] --key=<key> --secret=<secret> --directory=<directory>
+  bitbucket-sync [--processes=processes]  [--owner=<owner>] --key=<key> --secret=<secret> --directory=<directory>
   bitbucket-sync --help
 
 Options:
   --help                     Show help
   --directory=<directory>    Directory where the repositories are mirrored
+  --owner=<owner>            Only retrieve repository from this owner. Default: retrieve all repositories
   --key=<key>                Bitbucket API key
   --secret=<secret>          Bitbucket API secret
   --processes=<processes>    Number of repositories to mirror at the same time (defaults to CPU count)
@@ -81,7 +82,7 @@ def ensure_base_directory(directory):
     return directory
 
 
-def retrieve_repositories_list(key, secret):
+def retrieve_repositories_list(key, secret, owner):
     oauth = OAuth1(client_key=unicode(key), client_secret=unicode(secret))
     API_ROOT = 'https://api.bitbucket.org'
     deploy_keys_resource = "%s/1.0/user/repositories/" % API_ROOT
@@ -90,16 +91,20 @@ def retrieve_repositories_list(key, secret):
         print("Error while listing the repositories")
         sys.exit(1)
 
-    repo_list = response.json()
-    return [repo for repo in repo_list if repo["scm"] == "git"]
+    for repository in response.json():
+        if repository["scm"] != "git":
+            continue
+        if owner and repository["owner"] != owner:
+            continue
+        yield repository
 
 
 def configure_queue(api_repositories, directory):
     directory = ensure_base_directory(directory)
 
     repositories_queue = Queue()
-    for repo in api_repositories:
-        repositories_queue.put((directory, repo))
+    for repository in api_repositories:
+        repositories_queue.put((directory, repository))
     return repositories_queue
 
 
@@ -127,11 +132,12 @@ def main():
     key = arguments["--key"]
     secret = arguments["--secret"]
     directory = arguments["--directory"]
+    owner = arguments["--owner"] or ""
     try:
         processes = int(arguments["--processes"] or "")
     except ValueError:
         processes = cpu_count()
 
-    api_repositories = retrieve_repositories_list(key, secret)
+    api_repositories = retrieve_repositories_list(key, secret, owner)
     repositories_queue = configure_queue(api_repositories, directory)
     consume_queue(repositories_queue, processes)
