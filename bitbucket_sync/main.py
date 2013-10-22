@@ -2,13 +2,11 @@
 directory. The OAuth key and secret must already be activated in bitbucket.
 
 Usage:
-  bitbucket-sync [--processes=processes] --key=<key> --secret=<secret> --account=<account> --directory=<directory>
+  bitbucket-sync [--processes=processes] --key=<key> --secret=<secret> --directory=<directory>
   bitbucket-sync --help
 
 Options:
   --help                     Show help
-  --verbose                  Be verbose
-  --account=<account>        Bitbucket account
   --directory=<directory>    Directory where the repositories are mirrored
   --key=<key>                Bitbucket API key
   --secret=<secret>          Bitbucket API secret
@@ -41,11 +39,9 @@ def init_worker():
 
 def main():
     arguments = docopt(__doc__, argv=sys.argv[1:], help=True, version="0.1")
-    verbose = arguments["--verbose"]
 
     key = arguments["--key"]
     secret = arguments["--secret"]
-    account = arguments["--account"]
     directory = arguments["--directory"]
     processes = arguments["--processes"]
 
