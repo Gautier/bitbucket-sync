@@ -28,7 +28,7 @@ from requests_oauthlib import OAuth1
 import requests
 
 def sync_repo(directory, repo, lock):
-    git_dir = os.path.join(directory, "%s.git" % repo["slug"])
+    git_dir = os.path.join(directory, repo["owner"], "%s.git" % repo["slug"])
     repo_url = "git@bitbucket.org:%s/%s.git" % (repo["owner"], repo["slug"])
 
     try:
