@@ -31,7 +31,7 @@ def sync_repo(args):
         subprocess.call(["git", "clone", "--mirror", repo_url])
         os.chdir("%s.git" % repo["slug"])
         subprocess.call(["git", "fetch", "-q"])
-    except Exception, e:
+    except Exception:
         raise
 
 def init_worker():
@@ -67,7 +67,7 @@ def main():
     directory = os.path.abspath(directory)
 
     try:
-        result = pool.map(sync_repo, [(directory, repo) for repo in only_git])
+        pool.map(sync_repo, [(directory, repo) for repo in only_git])
     except KeyboardInterrupt:
         pool.close()
         pool.terminate()
