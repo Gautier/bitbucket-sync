@@ -46,6 +46,7 @@ def sync_repo(directory, repo, lock):
                                      repo_url,
                                      git_dir],
                                      stderr=subprocess.STDOUT)
+            return True
         except subprocess.CalledProcessError, e:
             lock.acquire()
             print("")
@@ -57,12 +58,14 @@ def sync_repo(directory, repo, lock):
     else:
         # git repository is valid
         subprocess.call(["git", "--git-dir", git_dir, "fetch", "-q"])
+        return True
 
 
 def worker(repositories, lock):
     while not repositories.empty():
         directory, repo = repositories.get()
-        sync_repo(directory, repo, lock)
+        if sync_repo(directory, repo, lock):
+            print "%s/%s synchronised" % (repo["owner"], repo["slug"])
 
 
 def ensure_base_directory(directory):
