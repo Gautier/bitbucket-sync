@@ -28,37 +28,78 @@ from docopt import docopt
 from requests_oauthlib import OAuth1
 import requests
 
+
+class GitCommands(object):
+    def __init__(self, directory, owner, slug):
+        self.owner = owner
+        self.slug = slug
+        self.local_dir = os.path.join(directory, owner, "%s.git" % slug)
+        self.repo_url = "git@bitbucket.org:%s/%s.git" % (owner, slug)
+
+    def validate_local_repository(self):
+        subprocess.check_output(
+                ["git", "--git-dir", self.local_dir, "rev-parse"],
+                stderr=subprocess.STDOUT)
+
+    def clone(self):
+        subprocess.check_output(
+                ["git", "clone", "--mirror", self.repo_url, self.local_dir],
+                stderr=subprocess.STDOUT)
+
+    def update(self):
+        subprocess.call(["git", "--git-dir", self.local_dir, "fetch", "-q"])
+
+
+class HgCommands(object):
+    def __init__(self, directory, owner, slug):
+        self.owner = owner
+        self.slug = slug
+        self.local_dir = os.path.join(directory, owner, "%s.hg" % slug)
+        self.repo_url = "ssh://hg@bitbucket.org/%s/%s" % (owner, slug)
+
+    def validate_local_repository(self):
+        subprocess.check_output(["hg", "-R", self.local_dir, "verify", "-q"],
+                                stderr=subprocess.STDOUT)
+
+    def clone(self):
+        subprocess.check_output(
+                ["hg", "clone", "-U", self.repo_url, self.local_dir],
+                stderr=subprocess.STDOUT)
+
+    def update(self):
+        subprocess.call(["hg", "-R", self.local_dir, "pull", "-q"])
+
+
 def sync_repo(directory, repo, lock):
-    git_dir = os.path.join(directory, repo["owner"], "%s.git" % repo["slug"])
-    repo_url = "git@bitbucket.org:%s/%s.git" % (repo["owner"], repo["slug"])
+    if repo["scm"] == "git":
+        scm = GitCommands(directory, repo["owner"], repo["slug"])
+    elif repo["scm"] == "hg":
+        scm = HgCommands(directory, repo["owner"], repo["slug"])
+    else:
+        raise NotImplementedError(
+                "SCM of type %s is not currently supported" % repo["scm"])
 
     try:
-        subprocess.check_output(["git", "--git-dir", git_dir, "rev-parse"],
-                                stderr=subprocess.STDOUT)
+        scm.validate_local_repository()
     except subprocess.CalledProcessError:
         # git repository hasn't yet been cloned properly
-        if os.path.exists(git_dir):
-            shutil.rmtree(git_dir)
+        if os.path.exists(scm.local_dir):
+            shutil.rmtree(scm.local_dir)
 
         try:
-            subprocess.check_output(["git",
-                                     "clone",
-                                     "--mirror",
-                                     repo_url,
-                                     git_dir],
-                                     stderr=subprocess.STDOUT)
+            scm.clone()
             return True
         except subprocess.CalledProcessError, e:
             lock.acquire()
             print("")
-            print("Couldn't clone %s" % repo_url)
-            print("git command: %s" % " ".join(e.cmd))
-            print("git output:\n%s" % e.output)
+            print("Couldn't clone %s" % scm.repo_url)
+            print("command: %s" % " ".join(e.cmd))
+            print("output:\n%s" % e.output)
             print("")
             lock.release()
     else:
         # git repository is valid
-        subprocess.call(["git", "--git-dir", git_dir, "fetch", "-q"])
+        scm.update()
         return True
 
 
@@ -92,8 +133,6 @@ def retrieve_repositories_list(key, secret, owner):
         sys.exit(1)
 
     for repository in response.json():
-        if repository["scm"] != "git":
-            continue
         if owner and repository["owner"] != owner:
             continue
         yield repository
