@@ -2,7 +2,7 @@
 bitbucket-sync
 ==============
 
-Synchronise all git repositories of a bitbucket account to local git clones.
+Synchronise all repositories of a bitbucket account to local clones.
 
 Synchronising means, remote repositories are cloned to local disk and later updated by changes
 in remote repository. This tool never pushes updates from local disk to remote server.
@@ -18,6 +18,17 @@ by pip from github::
 
     $ pip install git+https://github.com/Gautier/bitbucket-sync.git#bitbucket-sync
 
+Prerequisity - git and/or hg command installed
+----------------------------------------------
+
+To be able working with git or hg repositories, respective program must be locally installed.
+
+The utility uses only console version of these programs.
+
+However, if you do not attempt to work with one of repository types, related command is not needed.
+
+If you attempt to work without needed program installed, utility will fail.
+
 Get credentials to access bitbucket account
 ===========================================
 
@@ -32,7 +43,7 @@ and get required OAuth tokens called Key and Secret.
 
    *Name*: bitbucket-sync
 
-   *Description*: Synchronise all git repositories of a bitbucket account to local git clones.
+   *Description*: Synchronise all repositories of a bitbucket account to local clones.
 
    *URL*: https://github.com/Gautier/bitbucket-sync
 
@@ -48,13 +59,13 @@ There is no need to recreate it again.
 Synchronizing your repos from bitbucket to local directory
 ===========================================================
 
-Initially clone all git repos you own on bitbucket
---------------------------------------------------
+Initially clone all repos you own on bitbucket
+----------------------------------------------
 
-Having a bitbucket account, e.g. "Gautier", bitbucket will show a set of git repositories
+Having a bitbucket account, e.g. "Gautier", bitbucket will show a set of repositories
 prefixed with this account name "Gautier/". These are the repos, owned by that account.
 
-To clone all bitbucket git repos owned by given user account to local disk::
+To clone all bitbucket repos owned by given user account to local disk::
 
     $ mkdir archive
     $ cd archive
