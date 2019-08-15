@@ -70,11 +70,11 @@ class HgCommands(object):
         subprocess.call(["hg", "-R", self.local_dir, "pull", "-q"])
 
 
-def sync_repo(directory, repo, lock):
+def sync_repo(directory, repo, owner, lock):
     if repo["scm"] == "git":
-        scm = GitCommands(directory, repo["owner"], repo["slug"])
+        scm = GitCommands(directory, owner, repo["slug"])
     elif repo["scm"] == "hg":
-        scm = HgCommands(directory, repo["owner"], repo["slug"])
+        scm = HgCommands(directory, owner, repo["slug"])
     else:
         raise NotImplementedError(
                 "SCM of type %s is not currently supported" % repo["scm"])
@@ -103,11 +103,11 @@ def sync_repo(directory, repo, lock):
         return True
 
 
-def worker(repositories, lock):
+def worker(repositories, lock, owner):
     while not repositories.empty():
         directory, repo = repositories.get()
-        if sync_repo(directory, repo, lock):
-            print "%s/%s synchronised" % (repo["owner"], repo["slug"])
+        if sync_repo(directory, repo, owner, lock):
+            print "%s/%s synchronised" % (owner, repo["slug"])
 
 
 def ensure_base_directory(directory):
@@ -123,20 +123,30 @@ def ensure_base_directory(directory):
     return directory
 
 
-def retrieve_repositories_list(key, secret, owner):
+def retrieve_repositories_list_pages(key, secret, owner, nextP=""):
     oauth = OAuth1(client_key=unicode(key), client_secret=unicode(secret))
     API_ROOT = 'https://api.bitbucket.org'
-    deploy_keys_resource = "%s/1.0/user/repositories/" % API_ROOT
+    deploy_keys_resource = "%s/2.0/repositories/%s/%s" % (API_ROOT, owner, nextP)
     response = requests.get(deploy_keys_resource, auth=oauth)
     if response.status_code != 200:
         print("Error while listing the repositories")
         sys.exit(1)
 
-    for repository in response.json():
-        if owner and repository["owner"] != owner:
-            continue
-        yield repository
+    return response
 
+def retrieve_repositories_list(key, secret, owner, nextP=""):
+    resp = []
+    page =""
+    while True:
+        r = retrieve_repositories_list_pages(key, secret, owner, nextP=page).json()
+        resp += r['values']
+        if 'next' in r:
+            page = r['next'].split('/')[-1]
+        else:
+            break
+    for repository in resp:
+        yield repository
+ 
 
 def configure_queue(api_repositories, directory):
     directory = ensure_base_directory(directory)
@@ -147,11 +157,11 @@ def configure_queue(api_repositories, directory):
     return repositories_queue
 
 
-def consume_queue(repositories_queue, processes):
+def consume_queue(repositories_queue, processes, owner):
     lock = thread.allocate_lock()
     worker_threads = []
     for i in range(processes):
-        worker_thread = Thread(target=worker, args=(repositories_queue, lock))
+        worker_thread = Thread(target=worker, args=(repositories_queue, lock, owner))
         worker_thread.start()
         worker_threads.append(worker_thread)
 
@@ -179,4 +189,4 @@ def main():
 
     api_repositories = retrieve_repositories_list(key, secret, owner)
     repositories_queue = configure_queue(api_repositories, directory)
-    consume_queue(repositories_queue, processes)
+    consume_queue(repositories_queue, processes, owner)
